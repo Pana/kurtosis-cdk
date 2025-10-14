@@ -107,7 +107,7 @@ cast send --rpc-url "https://evmtestnet.confluxrpc.com/7mCztCVfajeGYYkWSea3Fk6oj
   b. 第二次部署, 需要更新 deploy_parameters.json 中的 salt 值
   c. 需要修改 cdk-node 的一行代码(适配 block hash), 修改之前需要切换到某个 release 版本的 tag, 否则会编译失败. 修改完之后需要本地 build, 然后使用自己 build 的镜像.
 2. 迁移到 conflux 测试网遇到的问题
-  1. l1 need fund address: 0x8943545177806ED17B9F23F0a21ee5948eCaa776
+  1. l1 need fund address: 0x8943545177806ED17B9F23F0a21ee5948eCaa776(panoptichain) 和 0x8Ff13e6e26206e8DeB61A7ab634b3CF9e1605FB8(bridge spammer 随机生成)
   2. Confura 有两个不兼容的 rpc: eth_getLogs(fromBlock=earliest) 和 eth_getTransactionByBlockHashAndIndex ✅
   3. cast send 有的操作会返回失败: server returned a null response when a non-null response was expected; 可能是因为 eth_feeHistory 失败概率比较高导致
   4. 另外两个错误:
@@ -126,8 +126,20 @@ cast send --rpc-url "https://evmtestnet.confluxrpc.com/7mCztCVfajeGYYkWSea3Fk6oj
     因为只有 validium  模式, 才会在部署合约 PolygonDataCommittee.
     所以此错误可以忽略
 
-  3. 随着服务的运行, sequenced batch 和 verified batch 的上链时间间隔会扩大, 服务刚启动为 5 分钟, 运行三四天后为经常会 10 分钟, 观察到 postgres 的数据和 cpu 负载很高, 
+3. 随着服务的运行, sequenced batch 和 verified batch 的上链时间间隔会扩大, 服务刚启动为 5 分钟, 运行三四天后为经常会 10 分钟, 观察到 postgres 的数据和 cpu 负载很高, 
     怀疑是数据库压力过大导致, 因此可考虑将数据库服务拆分到单独的服务器上.
+
+### 需要额外配置的账户
+
+1. panoptichain 组件的 0x8943545177806ED17B9F23F0a21ee5948eCaa776
+2. 如果启动 bridge spammer 组件, 则会随机生成一个新的账户, 并在 l1 和 l2 上给该账户打钱
+
+
+kurtosis 中生成新账户的方式:
+
+1. cast wallet new
+2. cast wallet private-key
+3. polycli wallet inspect --mnemonic
   
 
 ### 关于 db
@@ -145,7 +157,9 @@ cdk 也可配置使用外部的数据库, 而不是自行部署一个 postgres �
 
 ```sh
 psql -h 127.0.0.1 -p 51300 -U pool_manager_user -d pool_manager_db
+psql -h 127.0.0.1 -p 51300 -U bridge_user -d bridge_db
 redacted
+
 
 select count(*) from pool.transaction where status = 'invalid' and error = 'INTERNAL_ERROR: queued sub-pool is full';
 
@@ -161,22 +175,92 @@ WHERE id IN (
 SELECT DISTINCT error FROM pool.transaction WHERE status = 'invalid';
 
 SELECT DISTINCT from_address FROM pool.transaction WHERE status = 'invalid' and error = 'INTERNAL_ERROR: insufficient funds';
-
-DO $$
-BEGIN
-    LOOP
-        DELETE FROM pool.transaction
-        WHERE id IN (
-            SELECT id
-            FROM pool.transaction
-            WHERE status = 'invalid' and error = 'INTERNAL_ERROR: queued sub-pool is full'
-            ORDER BY id
-            LIMIT 1000
-        );
-        EXIT WHEN NOT FOUND;
-    END LOOP;
-END$$;
+SELECT
 ```
+
+#### 配置使用外部数据库
+
+1. deploy_databases: false
+2. 修改 databases.star
+  a. USE_REMOTE_POSTGRES = True
+  b. POSTGRES_HOSTNAME = "your_postgres_host"
+  c. 根据需要创建 用户, db, 初始化操作
+
+aggregator_db
+aggregator_syncer_db
+bridge_db
+dac_db
+op_succinct_db
+pool_manager_db
+prover_db
+
+```sql
+CREATE USER master_user WITH PASSWORD 'master_password';
+CREATE DATABASE master OWNER master_user;
+GRANT ALL PRIVILEGES ON DATABASE master TO master_user;
+
+ALTER ROLE master_user CREATEDB;
+ALTER ROLE master_user CREATEROLE;
+ALTER ROLE master_user LOGIN;
+ALTER ROLE master_user SUPERUSER;
+ALTER ROLE master_user NOSUPERUSER;
+
+# 查看某用户权限
+\du master_user
+```
+
+```sql
+-- init sql
+    \connect master master_user;
+    CREATE USER aggregator_user with password 'redacted';
+    CREATE DATABASE aggregator_db OWNER aggregator_user;
+
+    grant all privileges on database aggregator_db to aggregator_user;
+
+    \connect master master_user;
+    CREATE USER aggregator_syncer_db_user with password 'redacted';
+    CREATE DATABASE aggregator_syncer_db OWNER aggregator_syncer_db_user;
+
+    grant all privileges on database aggregator_syncer_db to aggregator_syncer_db_user;
+
+    \connect master master_user;
+    CREATE USER bridge_user with password 'redacted';
+    CREATE DATABASE bridge_db OWNER bridge_user;
+
+    grant all privileges on database bridge_db to bridge_user;
+
+    \connect master master_user;
+    CREATE USER dac_user with password 'redacted';
+    CREATE DATABASE dac_db OWNER dac_user;
+
+    grant all privileges on database dac_db to dac_user;
+
+    \connect master master_user;
+    CREATE USER op_succinct_user with password 'op_succinct_password';
+    CREATE DATABASE op_succinct_db OWNER op_succinct_user;
+
+    grant all privileges on database op_succinct_db to op_succinct_user;
+
+    \connect master master_user;
+    CREATE USER pool_manager_user with password 'redacted';
+    CREATE DATABASE pool_manager_db OWNER pool_manager_user;
+
+    grant all privileges on database pool_manager_db to pool_manager_user;
+
+    \connect master master_user;
+    CREATE USER prover_user with password 'redacted';
+    CREATE DATABASE prover_db OWNER prover_user;
+
+        \connect prover_db prover_user;
+        CREATE SCHEMA state;
+
+CREATE TABLE state.nodes (hash BYTEA PRIMARY KEY, data BYTEA NOT NULL);
+CREATE TABLE state.program (hash BYTEA PRIMARY KEY, data BYTEA NOT NULL);
+
+
+
+    grant all privileges on database prover_db to prover_user;
+    ```
 
 ### 如何保证 l2 的持续运行
 
