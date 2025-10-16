@@ -180,8 +180,7 @@ SELECT
 
 #### 配置使用外部数据库
 
-1. deploy_databases: false
-2. 修改 databases.star
+修改 databases.star
   a. USE_REMOTE_POSTGRES = True
   b. POSTGRES_HOSTNAME = "your_postgres_host"
   c. 根据需要创建 用户, db, 初始化操作
@@ -251,13 +250,11 @@ ALTER ROLE master_user NOSUPERUSER;
     CREATE USER prover_user with password 'redacted';
     CREATE DATABASE prover_db OWNER prover_user;
 
-        \connect prover_db prover_user;
-        CREATE SCHEMA state;
+    \connect prover_db prover_user;
+    CREATE SCHEMA state;
 
-CREATE TABLE state.nodes (hash BYTEA PRIMARY KEY, data BYTEA NOT NULL);
-CREATE TABLE state.program (hash BYTEA PRIMARY KEY, data BYTEA NOT NULL);
-
-
+    CREATE TABLE state.nodes (hash BYTEA PRIMARY KEY, data BYTEA NOT NULL);
+    CREATE TABLE state.program (hash BYTEA PRIMARY KEY, data BYTEA NOT NULL);
 
     grant all privileges on database prover_db to prover_user;
     ```

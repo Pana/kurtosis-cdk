@@ -32,15 +32,25 @@ def get_panoptichain_config(plan, args, contract_setup_addresses):
     panoptichain_data = {
         "l2_rpc_url": l2_rpc_url.http,
         # cast wallet address --mnemonic "{{.l1_preallocated_mnemonic}}"
-        "l1_sender_address": "0x8943545177806ED17B9F23F0a21ee5948eCaa776",
-        "l2_sender_address": "0x8943545177806ED17B9F23F0a21ee5948eCaa776",
+        # "l1_sender_address": "0x8943545177806ED17B9F23F0a21ee5948eCaa776",
+        # "l2_sender_address": "0x8943545177806ED17B9F23F0a21ee5948eCaa776",
+        "l1_sender_address": args.get("zkevm_l2_l1_panoptichain_address"),
+        "l2_sender_address": args.get("zkevm_l2_l1_panoptichain_address"),
+
         # cast wallet private-key "{{.l1_preallocated_mnemonic}}" | cut -c3-
-        "l1_sender_private_key": "bcdf20249abf0ed6d944c0288fad489e33f66b3960d9e6229c1cd214ed3bbe31",
-        "l2_sender_private_key": "bcdf20249abf0ed6d944c0288fad489e33f66b3960d9e6229c1cd214ed3bbe31",
+        # "l1_sender_private_key": "bcdf20249abf0ed6d944c0288fad489e33f66b3960d9e6229c1cd214ed3bbe31",
+        # "l2_sender_private_key": "bcdf20249abf0ed6d944c0288fad489e33f66b3960d9e6229c1cd214ed3bbe31",
+        "l1_sender_private_key": args.get("zkevm_l2_l1_panoptichain_private_key"),
+        "l2_sender_private_key": args.get("zkevm_l2_l1_panoptichain_private_key"),
+
         # cast wallet address --mnemonic "code code code code code code code code code code code quality"
-        "l1_receiver_address": "0x85dA99c8a7C2C95964c8EfD687E95E632Fc533D6",
-        "l2_receiver_address": "0x85dA99c8a7C2C95964c8EfD687E95E632Fc533D6",
+        # "l1_receiver_address": "0x85dA99c8a7C2C95964c8EfD687E95E632Fc533D6",
+        # "l2_receiver_address": "0x85dA99c8a7C2C95964c8EfD687E95E632Fc533D6",
+        "l1_receiver_address": args.get("zkevm_l2_l1_panoptichain_address"),
+        "l2_receiver_address": args.get("zkevm_l2_l1_panoptichain_address"),
     }
+
+    plan.print("panoptichain_data", str(panoptichain_data))
 
     return plan.render_templates(
         name="panoptichain-config",
