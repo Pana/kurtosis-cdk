@@ -457,3 +457,21 @@ Private key: 0x2a22f4a6dfc0ed2182e839409cd2e743ddbf63f131def86ef8b50e47f0f3b55f
 # 某个账户的余额不足
 [cdk-erigon-rpc-001] [WARN] [09-21|02:13:30.016] [rpc] served                             conn=172.16.0.21:35318 method=eth_sendRawTransaction reqid=17 t=2.721452ms err="RPC error response: INTERNAL_ERROR: insufficient funds"
 ```
+
+### verified batch 卡主问题
+
+因为交易执行 reverted 了, https://evmtestnet.confluxscan.org/tx/0x0e147576f9c2dba33acd9cfdf58a4003beabcff9aa5af786c8c76a71b000a1dd
+
+导致了下边的错误, 该错误一直重复, 逻辑卡死. 重启后解决.
+
+可能需要添加交易失败重发的逻辑
+
+```sh
+[cdk-node-001] 2025-10-22T02:10:45.430Z	ERROR	ethtxmanager/ethtxmanager.go:1063	failed to get monitored tx result, err: execution reverted: revert: 	{"pid": 9, "monitoredTxId": "0xa59c78e3b0fa039a16b4c384f3dfe43c3b1750afe4e8bc0c2c6abee70a1029b6"}
+[cdk-node-001] github.com/0xPolygon/zkevm-ethtx-manager/ethtxmanager.(*Client).ProcessPendingMonitoredTxs
+[cdk-node-001] 	/go/pkg/mod/github.com/pana/zkevm-ethtx-manager@v0.0.0-20250915025557-d18d025b8410/ethtxmanager/ethtxmanager.go:1063
+[cdk-node-001] github.com/0xPolygon/cdk/aggregator.(*Aggregator).settleDirect
+[cdk-node-001] 	/go/src/github.com/0xPolygon/cdk/aggregator/aggregator.go:607
+[cdk-node-001] github.com/0xPolygon/cdk/aggregator.(*Aggregator).sendFinalProof
+[cdk-node-001] 	/go/src/github.com/0xPolygon/cdk/aggregator/aggregator.go:517
+```
