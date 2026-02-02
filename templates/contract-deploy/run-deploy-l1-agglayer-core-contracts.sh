@@ -163,6 +163,7 @@ cast send \
 # Deploy deterministic proxy.
 # https://github.com/Arachnid/deterministic-deployment-proxy
 # You can find the `signer_address`, `transaction` and `deployer_address` by looking at the README.
+echo_ts "Ensuring deterministic deployment proxy is deployed"
 deployer_address="0x4e59b44847b379578588920ca78fbf26c0b4956c"
 if [[ $(cast code --rpc-url "{{.l1_rpc_url}}" $deployer_address) == "0x" ]]; then
     echo_ts "Deploying deterministic deployment proxy"
@@ -186,6 +187,7 @@ fi
 # strictly specific to minimal preset, but if we don't have "minimal"
 # configured, it's going to take like 25 minutes for the first
 # finalized block
+echo_ts "Waiting for the first finalized block"
 l1_preset="{{.l1_preset}}"
 if [[ $l1_preset == "minimal" ]]; then
     # This might not be required, but it seems like the downstream
@@ -198,3 +200,5 @@ if [[ $l1_preset == "minimal" ]]; then
         finalized_block_number="$(cast block-number --rpc-url '{{.l1_rpc_url}}' finalized)"
     done
 fi
+
+echo_ts "Contract deployment complete"
