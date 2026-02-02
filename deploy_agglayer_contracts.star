@@ -331,7 +331,7 @@ def run(plan, args, deployment_stages, op_stack_args):
                 command=[
                     "/bin/sh",
                     "-c",
-                    "chmod +x {0} && {0}".format(
+                    "chmod +x {0} && {0} 2>&1 | tee /opt/run-deploy-l1-agglayer-core-contracts.log".format(
                         "/opt/contract-deploy/run-deploy-l1-agglayer-core-contracts.sh"
                     ),
                 ]
@@ -344,7 +344,7 @@ def run(plan, args, deployment_stages, op_stack_args):
                 command=[
                     "/bin/sh",
                     "-c",
-                    "chmod +x {0} && {0}".format(
+                    "chmod +x {0} && {0} 2>&1 | tee /opt/run-create-agglayer-rollup.log".format(
                         "/opt/contract-deploy/run-create-agglayer-rollup.sh"
                     ),
                 ]
