@@ -331,7 +331,7 @@ def run(plan, args, deployment_stages, op_stack_args):
                 command=[
                     "/bin/sh",
                     "-c",
-                    "chmod +x {0} && {0} 2>&1 | tee /opt/run-deploy-l1-agglayer-core-contracts.log".format(
+                    "set -o pipefile; (chmod +x {0} && {0}) 2>&1 | tee /opt/run-deploy-l1-agglayer-core-contracts.log".format(
                         "/opt/contract-deploy/run-deploy-l1-agglayer-core-contracts.sh"
                     ),
                 ]
@@ -342,9 +342,9 @@ def run(plan, args, deployment_stages, op_stack_args):
             service_name=contracts_service_name,
             recipe=ExecRecipe(
                 command=[
-                    "/bin/sh",
+                    "/bin/bash",
                     "-c",
-                    "chmod +x {0} && {0} 2>&1 | tee /opt/run-create-agglayer-rollup.log".format(
+                    "set -o pipefile; (chmod +x {0} && {0}) 2>&1 | tee /opt/run-create-agglayer-rollup.log".format(
                         "/opt/contract-deploy/run-create-agglayer-rollup.sh"
                     ),
                 ]
