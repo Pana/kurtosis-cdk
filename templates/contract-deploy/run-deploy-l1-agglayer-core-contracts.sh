@@ -94,6 +94,10 @@ sed -i 's#http://127.0.0.1:8545#{{.l1_rpc_url}}#' hardhat.config.ts
 # Set up a foundry project in case we do a gas token or dac deployment.
 printf "[profile.default]\nsrc = 'contracts'\nout = 'out'\nlibs = ['node_modules']\n" > foundry.toml
 
+sed -i 's/5500000n/11000000n/g' /opt/zkevm-contracts/deployment/v2/3_deployContracts.ts
+sed -i 's/10500000n/21000000n/g' /opt/zkevm-contracts/deployment/v2/3_deployContracts.ts
+sed -i 's/1000000/2000000/g' /opt/zkevm-contracts/deployment/helpers/deployment-helpers.ts
+
 is_first_rollup=0 # an indicator if this deployment is doing the first setup of the agglayer etc
 if [[ ! -e /opt/zkevm/combined.json ]]; then
     echo_ts "It looks like this is the first rollup so we'll deploy the LxLy and Rollup Manager"
@@ -159,19 +163,22 @@ cast send \
 # Deploy deterministic proxy.
 # https://github.com/Arachnid/deterministic-deployment-proxy
 # You can find the `signer_address`, `transaction` and `deployer_address` by looking at the README.
-echo_ts "Deploying deterministic deployment proxy"
-signer_address="0x3fab184622dc19b6109349b94811493bf2a45362"
-transaction="0xf8a58085174876e800830186a08080b853604580600e600039806000f350fe7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf31ba02222222222222222222222222222222222222222222222222222222222222222a02222222222222222222222222222222222222222222222222222222222222222"
+echo_ts "Ensuring deterministic deployment proxy is deployed"
 deployer_address="0x4e59b44847b379578588920ca78fbf26c0b4956c"
-cast send \
-    --rpc-url "{{.l1_rpc_url}}" \
-    --mnemonic "{{.l1_preallocated_mnemonic}}" \
-    --value "0.01ether" \
-    "$signer_address"
-cast publish --rpc-url "{{.l1_rpc_url}}" "$transaction"
 if [[ $(cast code --rpc-url "{{.l1_rpc_url}}" $deployer_address) == "0x" ]]; then
-    echo_ts "No code at deployer address: $deployer_address"
-    exit 1
+    echo_ts "Deploying deterministic deployment proxy"
+    signer_address="0x3fab184622dc19b6109349b94811493bf2a45362"
+    transaction="0xf8a58085174876e800830186a08080b853604580600e600039806000f350fe7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf31ba02222222222222222222222222222222222222222222222222222222222222222a02222222222222222222222222222222222222222222222222222222222222222"
+    cast send \
+        --rpc-url "{{.l1_rpc_url}}" \
+        --mnemonic "{{.l1_preallocated_mnemonic}}" \
+        --value "0.01ether" \
+        "$signer_address"
+    cast publish --rpc-url "{{.l1_rpc_url}}" "$transaction"
+    if [[ $(cast code --rpc-url "{{.l1_rpc_url}}" $deployer_address) == "0x" ]]; then
+        echo_ts "No code at deployer address: $deployer_address"
+        exit 1
+    fi
 fi
 
 
@@ -180,6 +187,7 @@ fi
 # strictly specific to minimal preset, but if we don't have "minimal"
 # configured, it's going to take like 25 minutes for the first
 # finalized block
+echo_ts "Waiting for the first finalized block"
 l1_preset="{{.l1_preset}}"
 if [[ $l1_preset == "minimal" ]]; then
     # This might not be required, but it seems like the downstream
@@ -192,3 +200,5 @@ if [[ $l1_preset == "minimal" ]]; then
         finalized_block_number="$(cast block-number --rpc-url '{{.l1_rpc_url}}' finalized)"
     done
 fi
+
+echo_ts "Contract deployment complete"

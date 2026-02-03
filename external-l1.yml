@@ -1,0 +1,67 @@
+deployment_stages:
+  deploy_l1: false # Disable local L1.
+  deploy_agglayer: false
+  deploy_l2_contracts: true
+  deploy_optimism_rollup: false
+  deploy_op_succinct: false
+  deploy_cdk_bridge_ui: false
+
+args:
+  verbosity: debug
+  additional_services:
+    - observability
+    # - blockscout
+    - status_checker
+    # - test_runner
+    - bridge_spammer
+    # - agglogger
+  sequencer_type: erigon
+  consensus_contract_type: rollup
+  agglayer_contracts_image: europe-west2-docker.pkg.dev/prj-polygonlabs-devtools-dev/public/agglayer-contracts:v11.0.0-rc.2-fork.12
+  zkevm_prover_image: hermeznetwork/zkevm-prover:v8.0.0-RC16-fork.12
+  use_dynamic_ports: false
+  zkevm_bridge_ui_image: zkevm-bridge-ui:0006445 # local build image, 编译方式参看 docker/README.md
+  cdk_node_image: cdk:latest # local build image, 编译方式, 在 cdk 目录下执行 make build-docker
+
+  ## local devnet
+  # l1_chain_id: 1025
+  # l1_rpc_url: http://172.17.0.1:8545
+  ## Conflux eSpace testnet
+  l1_chain_id: 71
+  # rpc vip key 到期时间 10/17/2025 11:31:32 AM
+  # l1_rpc_url: https://evmtestnet.confluxrpc.com/7mCztCVfajeGYYkWSea3Fk6ojynwUmBZ6L1ue2YTkudVfus7XkqbKnoMcYVYZYYVJSjDw73u45Nr4zHmyRLaG5x2w
+  l1_rpc_url: http://172.17.0.1:3030
+
+  # l1_ws_url: wss://cfx-espace-testnet.gateway.tenderly.co/3fHgQnAD9BSz8b6YOCIJbW
+  # 0x939EFDb3a33f09415d60060b9cdf879671385740
+  l1_preallocated_mnemonic: slice avocado mutual shield affair puppy gap seed afford hip alley slab
+  l1_funding_amount: 5ether
+
+  ## L2 Config
+  # polycli wallet inspect --mnemonic 'coil oxygen lounge spawn quiz join color else possible flight alter couple' --addresses 11 | jq -r '.Addresses[] | [.ETHAddress, .HexPrivateKey] | @tsv' | awk 'BEGIN{split("sequencer,aggregator,claimtxmanager,timelock,admin,loadtest,agglayer,dac,proofsigner,l1testing,claimsponsor",roles,",")} {print "# " roles[NR] "\nzkevm_l2_" roles[NR] "_address: \"" $1 "\""; print "zkevm_l2_" roles[NR] "_private_key: \"0x" $2 "\"\n"}'
+  zkevm_l2_sequencer_address: 0x6Dd5d190a06612A1cEb90575e6295a9C5B1BAe00
+  zkevm_l2_sequencer_private_key: 0xc3510e3b3ab6516cd0ce1ab6c325009c8c30d2d70d2501d173cc87c5b015d415
+
+  zkevm_l2_aggregator_address: 0x7Fe2c67EdAc4C4d1432beE614f79BC7325725405
+  zkevm_l2_aggregator_private_key: 0xde293a47671753c18d6bd1a4c93215cb5a3fcbad0b4750523b68d57482dd6b9a
+
+  zkevm_l2_claimtxmanager_address: 0x73D0DC20aBF79ED272346440eDcd0df21EB091De
+  zkevm_l2_claimtxmanager_private_key: 0x82296f7cebe1e9771fa27481cdc0789788db2ba2a28d98c9422dcb7ad165e0a2
+
+  zkevm_l2_timelock_address: 0x8956d13525Fa141c45569745b71E60Fd332136f1
+  zkevm_l2_timelock_private_key: 0x4bb363e92e9d53bc38e9ec28dbfb84785a38c6ad184090c49118d50cbe511502
+
+  zkevm_l2_admin_address: 0x44dE328DFADee5eAbFF836Aa6946f1AF0688Cb9a
+  zkevm_l2_admin_private_key: 0xdb16beb632d0ec1d775a4d90d9f4c3c16955123cbcc9a31398d3a736c3a9fccc
+
+  zkevm_l2_loadtest_address: 0x06B507b692895705CADC1F41d9EB584AcB5eFe87
+  zkevm_l2_loadtest_private_key: 0x96c7c3c3006bd4d1accb13293c6a0cf82f1f8549d8ac2c712a00db60346a3b8a
+
+  zkevm_l2_agglayer_address: 0x5aeA3b604d409e91a7e3c3f40aAB1C3306300E37
+  zkevm_l2_agglayer_private_key: 0x36d34100ae1aae996176fa3e61a5e125441f61a05c0f0c4dd98cd9e11398a7d0
+
+  zkevm_l2_dac_address: 0xba8A619760d51664fa3C1f2b0d2E8a7c85d95402
+  zkevm_l2_dac_private_key: 0xefa32ac9745248cb8b63b063e9a0c97b91faef5a555b0be42e96700709653c58
+
+  zkevm_l2_proofsigner_address: 0x33000A529557D23D8a785A8dde0F900F31e97d67
+  zkevm_l2_proofsigner_private_key: 0xceb8e59c475a7563fb36d58d55cd22eac66bd3be1a380acad6e57d9415dc892c
