@@ -1,0 +1,45 @@
+deployment_stages:
+  deploy_l2_contracts: true
+  deploy_l1: false
+  deploy_agglayer: false
+  deploy_l2_contracts: true
+
+args:
+  verbosity: debug
+  additional_services:
+    - observability
+    # - blockscout
+    - status_checker
+    # - test_runner
+    - bridge_spammer
+    # - agglogger
+  cdk_node_image: cdk:latest # local build image, 编译方式, 在 cdk 目录下执行 make build-docker
+  sequencer_type: cdk-erigon
+  consensus_contract_type: rollup
+  zkevm_prover_image: hermeznetwork/zkevm-prover:v8.0.0-RC16-fork.12
+  ## L1 Config
+  l1_chain_id: 7655
+  l1_preallocated_mnemonic: excess recall right pill tool category blanket fiscal stadium raise under true
+  # Address:     0x50c295fBc303C5b3C2A870ED275Fe8767036C1b9
+  # Private key: 0x974912e9aa2b05fb7db02a48155b6e98922d81d39f58756ea6685b4e3fb14b1c
+  # polycli wallet inspect --mnemonic "excess recall right pill tool category blanket fiscal stadium raise under true"
+  l1_funding_amount: 100ether
+  l1_rpc_url: http://172.17.0.1:3030
+  l1_ws_url: CHANGE_ME
+
+  ## L2 Config
+  l2_sequencer_address: 0x11553Bb55719ED20cDE3Ac32b1E1E7F544046d48
+  l2_sequencer_private_key: 0x25054d6c6a6188451b9d930850586fafd87aab1b77d4ff1a835fa2f8efa04721
+
+  l2_aggregator_address: 0xE057ee59d3c3Df6354f18E21d4A6DABCDc4Cb5A3
+  l2_aggregator_private_key: 0xd4b9733e1352492b42f9a2f4a439c88e8777a1b150bb5da7f9879261a4b4737d
+
+  l2_claimsponsor_address: 0xDAB3220bcaB3FC92C09D3F14BCE666572875dE96
+  l2_claimsponsor_private_key: 0x2bdf573d73449097e4502adeedb9bc2f947e244390f4d5fedc78035061899ff3
+
+  l2_admin_address: 0x2e82d35474D85fE8410cBfbaC5e3182FE4A27b24
+  l2_admin_private_key: 0xe122b670b8b2ed2c280b8c35ca7197f064b2a23a6aba863d75058a924337cf30
+
+  l2_dac_address: 0xb3432967543390B6118ba9EB045cD517D6C4e899
+  l2_dac_private_key: 0x261e78b7110fbe25bb0e54cbabbb1024ef996c226c3faf72202ad1bf84583cf2
+

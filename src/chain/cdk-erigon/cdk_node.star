@@ -150,10 +150,15 @@ def get_keystore_artifacts(plan, args):
         service_name="contracts" + args["deployment_suffix"],
         src=constants.KEYSTORES_DIR + "/sequencer.keystore",
     )
-    aggregator_keystore_artifact = plan.get_files_artifact(
+    # aggregator_keystore_artifact = plan.get_files_artifact(
+    #     name="aggregator-keystore",
+    #     # service_name="contracts" + args["deployment_suffix"],
+    #     # src=constants.KEYSTORES_DIR+"/aggregator.keystore",
+    # )
+    aggregator_keystore_artifact = plan.store_service_files(
         name="aggregator-keystore",
-        # service_name="contracts" + args["deployment_suffix"],
-        # src=constants.KEYSTORES_DIR+"/aggregator.keystore",
+        service_name="contracts" + args["deployment_suffix"],
+        src=constants.KEYSTORES_DIR + "/aggregator.keystore",
     )
     claim_sponsor_keystore_artifact = plan.store_service_files(
         name="claimsponsor-keystore-cdk",

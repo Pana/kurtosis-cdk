@@ -36,3 +36,5 @@ snapshots
 # Solidity build artifacts
 out/
 cache/
+
+deploy.log
