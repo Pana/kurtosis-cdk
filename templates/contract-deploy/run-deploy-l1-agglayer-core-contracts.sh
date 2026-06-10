@@ -187,9 +187,14 @@ fi
 # strictly specific to minimal preset, but if we don't have "minimal"
 # configured, it's going to take like 25 minutes for the first
 # finalized block
-echo_ts "Waiting for the first finalized block"
+# NOTE: For external L1 networks (like Conflux eSpace), we skip this wait
+# because block finalization is handled by the external network
 l1_preset="{{.l1_preset}}"
-if [[ $l1_preset == "minimal" ]]; then
+deploy_l1="{{.deploy_l1}}"
+
+# Only wait for finalized block if we're using a local L1 with minimal preset
+if [[ $deploy_l1 == "true" && $l1_preset == "minimal" ]]; then
+    echo_ts "Waiting for the first finalized block"
     # This might not be required, but it seems like the downstream
     # processes are more reliable if we wait for all of the deployments to
     # finalize before moving on
@@ -199,6 +204,8 @@ if [[ $l1_preset == "minimal" ]]; then
         sleep 5
         finalized_block_number="$(cast block-number --rpc-url '{{.l1_rpc_url}}' finalized)"
     done
+else
+    echo_ts "Skipping finalized block wait for external L1 network"
 fi
 
 echo_ts "Contract deployment complete"
