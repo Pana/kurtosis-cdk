@@ -47,9 +47,9 @@ DEFAULT_IMAGES = {
     "agglayer_contracts_image": "europe-west2-docker.pkg.dev/prj-polygonlabs-devtools-dev/public/agglayer-contracts:v11.0.0-rc.2-fork.12",
     "agglogger_image": "europe-west2-docker.pkg.dev/prj-polygonlabs-devtools-dev/public/agglogger:bf1f8c1",
     "anvil_image": "ghcr.io/foundry-rs/foundry:v1.0.0",
-    "cdk_erigon_node_image": "hermeznetwork/cdk-erigon:v2.61.24",
+    "cdk_erigon_node_image": "hermeznetwork/cdk-erigon:local",
     "cdk_sovereign_erigon_node_image": "hermeznetwork/cdk-erigon:v2.63.0-rc4",  # Type-1 CDK Erigon Sovereign
-    "cdk_node_image": "ghcr.io/0xpolygon/cdk:0.5.4",
+    "cdk_node_image": "davidyoung2025/cdk:local",
     "cdk_validium_node_image": "ghcr.io/0xpolygon/cdk-validium-node:0.6.4-cdk.10",
     "db_image": "postgres:16.2",
     "geth_image": "ethereum/client-go:v1.16.2",
@@ -590,6 +590,9 @@ def parse_args(plan, user_args):
     deploy_cdk_erigon_node = deployment_stages.get("deploy_cdk_erigon_node", False)
     deploy_op_node = deployment_stages.get("deploy_optimism_rollup", False)
     l2_rpc_name = get_l2_rpc_name(deploy_cdk_erigon_node, deploy_op_node)
+    l2_sequencer_name = get_l2_sequencer_name(
+        deploy_cdk_erigon_node, deploy_op_node
+    )
 
     # Determine static ports, if specified.
     if not args.get("use_dynamic_ports", True):
@@ -611,6 +614,7 @@ def parse_args(plan, user_args):
 
     args = args | {
         "l2_rpc_name": l2_rpc_name,
+        "l2_sequencer_name": l2_sequencer_name,
         "sequencer_name": sequencer_name,
         "zkevm_rollup_fork_id": fork_id,
         "zkevm_rollup_fork_name": fork_name,
@@ -716,6 +720,18 @@ def get_l2_rpc_name(deploy_cdk_erigon_node, deploy_op_node):
     if deploy_cdk_erigon_node:
         return "cdk-erigon-rpc"
     return "zkevm-node-rpc"
+
+
+def get_l2_sequencer_name(deploy_cdk_erigon_node, deploy_op_node):
+    # The sequencer is the only node that maintains the full PlainState/
+    # History tables required to correctly unwind the SMT for witness
+    # generation.  For OP stack there is no separate sequencer service in
+    # the kurtosis deployment - fall back to the op-geth node.
+    if deploy_op_node:
+        return "op-el-1-op-geth-op-node"
+    if deploy_cdk_erigon_node:
+        return "cdk-erigon-sequencer"
+    return "zkevm-node-sequence-sender"
 
 
 def get_op_stack_args(plan, args, user_op_stack_args):

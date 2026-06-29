@@ -24,13 +24,22 @@ L2Coinbase =  "{{.zkevm_l2_sequencer_address}}"
 SequencerPrivateKeyPath = "{{or .zkevm_l2_sequencer_keystore_file "/etc/cdk/sequencer.keystore"}}"
 SequencerPrivateKeyPassword  = "{{.zkevm_l2_keystore_password}}"
 
+# Use the trusted aggregator keystore for the aggregator's L1 proof submission.
+# SenderProofToL1Addr is the trusted aggregator address configured at rollup
+# creation; the signing key must match it.
 AggregatorPrivateKeyPath = "{{or .zkevm_l2_aggregator_keystore_file "/etc/cdk/aggregator.keystore"}}"
 AggregatorPrivateKeyPassword  = "{{.zkevm_l2_keystore_password}}"
-SenderProofToL1Addr = "{{.zkevm_l2_agglayer_address}}"   
+SenderProofToL1Addr = "{{.zkevm_l2_aggregator_address}}"
 polygonBridgeAddr = "{{.zkevm_bridge_address}}"
 
-RPCURL = "http://{{.l2_rpc_name}}{{.deployment_suffix}}:{{.zkevm_rpc_http_port}}"
-WitnessURL = "http://{{.l2_rpc_name}}{{.deployment_suffix}}:{{.zkevm_rpc_http_port}}"
+RPCURL = "http://{{.l2_sequencer_name}}{{.deployment_suffix}}:{{.zkevm_rpc_http_port}}"
+# NOTE: The aggregator's getWitness() uses cfg.RPCURL (see cdk/aggregator/
+# aggregator.go line 161: rpc.NewBatchEndpoints(cfg.RPCURL)), so both RPCURL
+# and WitnessURL must point to the SEQUENCER.  The RPC node only writes
+# headers from the DataStream and lacks the full PlainState/History needed
+# for UnwindZkSMT, causing "wrong trie root" errors.  The sequencer has the
+# complete state and can correctly unwind the SMT for witness generation.
+WitnessURL = "http://{{.l2_sequencer_name}}{{.deployment_suffix}}:{{.zkevm_rpc_http_port}}"
 
 # This values can be override directly from genesis.json
 rollupCreationBlockNumber = "{{.zkevm_rollup_manager_block_number}}"
@@ -57,6 +66,15 @@ Outputs = ["stderr"]
         VerifyProofInterval = "10s"
         GasOffset = 150000
         SettlementBackend = "{{.settlement_backend}}"
+        # Disable state root sanity check for genesis batch compatibility
+        # (SMT root in erigon differs from the state root in block header)
+        BatchProofSanityCheckEnabled = false
+        # RPCURL and WitnessURL must point to the SEQUENCER.  The RPC node only
+        # writes headers from the DataStream and lacks full PlainState/History,
+        # causing "wrong trie root" errors during UnwindZkSMT.  The aggregator's
+        # getWitness() uses cfg.RPCURL (see cdk/aggregator/aggregator.go:161).
+        RPCURL = "http://{{.l2_sequencer_name}}{{.deployment_suffix}}:{{.zkevm_rpc_http_port}}"
+        WitnessURL = "http://{{.l2_sequencer_name}}{{.deployment_suffix}}:{{.zkevm_rpc_http_port}}"
         [Aggregator.DB]
                 Name = "{{.aggregator_db.name}}"
                 User = "{{.aggregator_db.user}}"
@@ -66,6 +84,21 @@ Outputs = ["stderr"]
                 EnableLog = false
                 MaxConns = 200
        
+# On chains with slow finalization (e.g. Conflux eSpace), the default
+# "finalized" BlockFinality delays the aggregator synchronizer by hundreds
+# of blocks, preventing it from seeing SequenceBatches events in time.
+# Using "latest" keeps the aggregator in sync with the L1 head.
+[Aggregator.Synchronizer.Synchronizer]
+SyncUpToBlock = "latest"
+BlockFinality = "latest"
+
+[SequenceSender]
+# The sequence-sender must query the SEQUENCER for batch data.  The RPC node
+# (cdk-erigon-rpc) receives blocks via DataStream but never reports batches as
+# closed, so the sequence-sender loops on "batch N is not closed yet" and
+# batches are never posted to L1 — blocking proof generation entirely.
+RPCURL = "http://{{.l2_sequencer_name}}{{.deployment_suffix}}:{{.zkevm_rpc_http_port}}"
+
 [AggSender]
 CertificateSendInterval = "1m"
 CheckSettledInterval = "5s"

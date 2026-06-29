@@ -199,6 +199,18 @@ def run(plan, args, deployment_stages, op_stack_args):
     files = {
         "/opt/zkevm": Directory(persistent_key="zkevm-artifacts"),
         "/opt/contract-deploy/": Directory(artifact_names=artifacts),
+        # Mount cdk-erigon tools (currently: smt-genesis binary) so the
+        # run-create-agglayer-rollup.sh script can pre-compute the SMT
+        # genesis root from dynamic-*-allocs.json before the L1 rollup
+        # is created. See doc-report/fix-plan-invalidProof.md for context.
+        "/opt/cdk-erigon/": Directory(
+            artifact_names=[
+                plan.upload_files(
+                    src="./static_files/cdk-erigon-tools/",
+                    name="cdk-erigon-tools",
+                ),
+            ],
+        ),
     }
 
     # Create op-succinct artifacts
@@ -331,7 +343,7 @@ def run(plan, args, deployment_stages, op_stack_args):
                 command=[
                     "/bin/bash",
                     "-c",
-                    "set -o pipefile; (chmod +x {0} && {0}) 2>&1 | tee /opt/run-deploy-l1-agglayer-core-contracts.log".format(
+                    "set -euo pipefail; (chmod +x {0} && {0}) 2>&1 | tee /opt/run-deploy-l1-agglayer-core-contracts.log".format(
                         "/opt/contract-deploy/run-deploy-l1-agglayer-core-contracts.sh"
                     ),
                 ]
@@ -344,9 +356,20 @@ def run(plan, args, deployment_stages, op_stack_args):
                 command=[
                     "/bin/bash",
                     "-c",
-                    "set -o pipefile; (chmod +x {0} && {0}) 2>&1 | tee /opt/run-create-agglayer-rollup.log".format(
+                    "set -euo pipefail; (chmod +x {0} && {0}) 2>&1 | tee /opt/run-create-agglayer-rollup.log".format(
                         "/opt/contract-deploy/run-create-agglayer-rollup.sh"
                     ),
+                ]
+            ),
+        )
+        plan.exec(
+            description="Validating generated contract artifacts",
+            service_name=contracts_service_name,
+            recipe=ExecRecipe(
+                command=[
+                    "/bin/bash",
+                    "-c",
+                    "set -euo pipefail; test -s /opt/zkevm/combined.json; test -s /opt/zkevm/genesis.json; jq -e '.polygonZkEVMBridgeAddress and .rollupAddress and .polTokenAddress and .admin and .polygonRollupManagerAddress' /opt/zkevm/combined.json >/dev/null",
                 ]
             ),
         )

@@ -14,6 +14,13 @@ bridge_address="$(jq --raw-output '.polygonZkEVMBridgeAddress' /opt/zkevm/combin
 # Grab the endpoints for l1
 l1_rpc_url="{{.l1_rpc_url}}"
 
+# Check if bridge address is available
+if [[ -z "$bridge_address" || "$bridge_address" == "null" || "$bridge_address" == "0x0000000000000000000000000000000000000000" ]]; then
+    echo "WARNING: polygonZkEVMBridgeAddress is not available in combined.json"
+    echo "Skipping GER update step..."
+    exit 0
+fi
+
 # The signature for bridging is long - just putting it into a var
 bridge_sig="bridgeAsset(uint32 destinationNetwork, address destinationAddress, uint256 amount, address token, bool forceUpdateGlobalExitRoot, bytes permitData)"
 

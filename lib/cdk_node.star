@@ -26,6 +26,7 @@ def create_cdk_node_service_config(
                     keystore_artifact.aggregator,
                     keystore_artifact.sequencer,
                     keystore_artifact.claim_sponsor,
+                    keystore_artifact.agglayer,
                 ],
             ),
             "/data": Directory(
@@ -105,11 +106,64 @@ def get_cdk_node_ports(args):
 def get_cdk_node_cmd(args):
     binary_name = args.get("binary_name")
 
+    # Workaround: pre-seed the synchronizer fork_id table so that
+    # SequenceBatches events are not dropped with forkid=0.
+    # The L1 CreateNewRollup event carries forkID=0 in its data,
+    # and the RollupTypeMap ABI call returns a wrong value,
+    # leaving the fork_id table empty.  Inject the configured
+    # fork_id after cdk-node has finished its 0001.sql migration
+    # (which creates the fork_id table) but before it starts the
+    # synchronizer event loop.  We use a background launcher that
+    # polls for the fork_id table and then INSERTs the row.
+    fork_id = args.get("zkevm_rollup_fork_id", "12")
+    dq = chr(34)  # double quote
+    sq = chr(39)  # single quote
+    # shell command run by the side-car to inject the fork_id row
+    inject_cmd = (
+        "i=0; while [ $i -lt 30 ]; do "
+        + "if sqlite3 /tmp/aggregator_sync_db.sqlite "
+        + dq + "SELECT name FROM sqlite_master WHERE type='table' AND name='fork_id';" + dq
+        + " 2>/dev/null | grep -q fork_id; then "
+        + "sqlite3 /tmp/aggregator_sync_db.sqlite "
+        + dq + "INSERT OR IGNORE INTO fork_id (fork_id, from_batch_num, to_batch_num, version, block_num) "
+        + "VALUES (" + str(fork_id) + ", 1, 9223372036854775807, " + sq + "banana" + sq + ", 0);" + dq
+        + " && echo injected-forkid-" + str(fork_id) + " && break; fi; "
+        + "i=$((i+1)); sleep 1; done; "
+    )
+
+    # Workaround: fix cdk-node-config.toml genesisBlockNumber to match
+    # the createRollupBlockNumber from genesis.json.  The default value
+    # comes from zkevm_rollup_manager_block_number (the block where
+    # RollupManager contract itself was deployed, which is several
+    # blocks AFTER our rollup was actually created).  This causes the
+    # synchronizer to miss the InitialSequenceBatches event that emits
+    # batch 1, leaving the sequenced_batches table without batch 1
+    # forever, which blocks the aggregator from ever dispatching
+    # proof tasks.  Read the correct value from genesis.json and
+    # rewrite cdk-node-config.toml to use it.
+    patch_config_cmd = (
+        "GBN=$(awk -F: '/\"genesisBlockNumber\"/ {gsub(/[^0-9]/, \"\", $2); print $2; exit}' /etc/cdk/genesis.json); "
+        + "if [ -n \"$GBN\" ] && [ \"$GBN\" != \"0\" ]; then "
+        + "sed -i -E 's|^genesisBlockNumber[[:space:]]*=.*|genesisBlockNumber = \"'\"$GBN\"'\"|' "
+        + "/etc/cdk/cdk-node-config.toml; "
+        + "sed -i -E 's|^rollupCreationBlockNumber[[:space:]]*=.*|rollupCreationBlockNumber = \"'\"$GBN\"'\"|' "
+        + "/etc/cdk/cdk-node-config.toml; "
+        + "sed -i -E 's|^rollupManagerCreationBlockNumber[[:space:]]*=.*|rollupManagerCreationBlockNumber = \"'\"$GBN\"'\"|' "
+        + "/etc/cdk/cdk-node-config.toml; "
+        + "echo patched-genesis-block-number-to-$GBN; "
+        + "else echo 'failed to determine genesisBlockNumber from /etc/cdk/genesis.json' >&2; exit 1; fi; "
+    )
+
     service_command = [
-        "sleep 20 && cdk-node run "
+        "sleep 20 && ("
+        + inject_cmd
+        + ") & "
+        + patch_config_cmd
+        + "cdk-node run "
         + "--cfg=/etc/cdk/cdk-node-config.toml "
         + "--custom-network-file=/etc/cdk/genesis.json "
-        + "--components=sequence-sender,aggregator"
+        + "--components=sequence-sender,aggregator; "
+        + "wait"
     ]
 
     if args["consensus_contract_type"] == constants.CONSENSUS_TYPE.pessimistic:
