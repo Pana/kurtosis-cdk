@@ -16,5 +16,6 @@
     "trustedSequencerURL": "http://{{.sequencer_name}}{{.deployment_suffix}}:{{.zkevm_rpc_http_port}}",
     "trustedAggregator":"{{.zkevm_l2_aggregator_address}}",
     "programVKey": "{{.program_vkey}}",
-    "proxiedTokensManager" : "{{ .zkevm_l2_sovereignadmin_address }}"
+    "proxiedTokensManager" : "{{ .zkevm_l2_sovereignadmin_address }}",
+    "smtGenesisRoot": ""
 }

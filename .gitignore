@@ -28,3 +28,5 @@ templates/contract-deploy/dynamic-kurtosis-conf.json
 templates/contract-deploy/genesis.json
 anvil_state.json
 combined.json
+
+*.patch

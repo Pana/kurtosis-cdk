@@ -127,12 +127,17 @@ cp deploy_output.json combined.json
 # versioned up to 8
 # DEPRECATED we will likely remove support for anything before fork 9 soon
 fork_id="{{.zkevm_rollup_fork_id}}"
-if [[ fork_id -lt 8 ]]; then
-    jq '.polygonRollupManagerAddress = .polygonRollupManager' combined.json > c.json; mv c.json combined.json
-    jq '.deploymentRollupManagerBlockNumber = .deploymentBlockNumber' combined.json > c.json; mv c.json combined.json
-    jq '.upgradeToULxLyBlockNumber = .deploymentBlockNumber' combined.json > c.json; mv c.json combined.json
-    jq '.polygonDataCommitteeAddress = .polygonDataCommittee' combined.json > c.json; mv c.json combined.json
-fi
+# Always create these fields regardless of fork_id, as they are required by downstream processes
+# Handle both polygonRollupManager and polygonRollupManagerContract field names
+# (zkevm-contracts uses polygonRollupManagerContract, but downstream expects polygonRollupManager)
+jq 'if .polygonRollupManager then .polygonRollupManagerAddress = .polygonRollupManager elif .polygonRollupManagerContract then .polygonRollupManager = .polygonRollupManagerContract | .polygonRollupManagerAddress = .polygonRollupManagerContract else . end' combined.json > c.json; mv c.json combined.json
+
+# deploymentBlockNumber may not exist in deploy_output.json from zkevm-contracts
+# Fall back to current block number if it doesn't exist
+current_block=$(cast block-number --rpc-url "{{.l1_rpc_url}}")
+jq --arg cb "$current_block" '.deploymentRollupManagerBlockNumber = (if .deploymentBlockNumber then .deploymentBlockNumber else ($cb | tonumber) end)' combined.json > c.json; mv c.json combined.json
+jq --arg cb "$current_block" '.upgradeToULxLyBlockNumber = (if .deploymentBlockNumber then .deploymentBlockNumber else ($cb | tonumber) end)' combined.json > c.json; mv c.json combined.json
+jq '.polygonDataCommitteeAddress = .polygonDataCommittee' combined.json > c.json; mv c.json combined.json
 
 # Configure contracts.
 

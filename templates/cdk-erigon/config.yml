@@ -102,7 +102,34 @@ zkevm.witness-memdb-size: 2GB
 # Enables full witness generation, which provides comprehensive proof data for transactions.
 # This can be useful for debugging and verification purposes.
 # Default: true
-zkevm.witness-full: false
+# zkevm.witness-full: false
+
+# Enable witness caching for batches. This caches witnesses in the DB during the stage loop,
+# avoiding the need to regenerate witnesses via SMT unwind for each RPC call.
+# This is crucial for networks with many unverified batches that need prover processing.
+#
+# IMPORTANT: the witness-cache Stage lives in `DefaultZkStages` (used by RPC nodes),
+# NOT in `SequencerZkStages` (used by the sequencer).  The sequencer therefore ignores
+# every witness-cache setting below, so we only render the block on RPC nodes.
+# On RPC nodes this stage continuously unwinds to each batch boundary and validates
+# the computed SMT root against the header state root, which is what keeps the RPC
+# PlainState in sync with the sequencer's state.  Without it, the RPC node's
+# UnwindForWitness will fail with "wrong trie root" (see also the cdk-node
+# `WitnessURL` comment in cdk-node-config.toml.template).
+# Default: false
+# {{if not .is_sequencer}}
+# zkevm.witness-cache-enable: true
+
+# How many batches to cache ahead of the highest verified batch.
+# Setting this to a higher value allows caching future batches for faster prover submission.
+# Default: 0
+# zkevm.witness-cache-batch-ahead-offset: 100
+
+# How many batches to cache behind the highest verified batch.
+# This ensures historical batches can still be quickly retrieved if needed.
+# Default: 5
+# zkevm.witness-cache-batch-behind-offset: 100
+# {{end}}
 
 ## Limbo Processing
 # Activate processing for batches that failed verification, allowing the network to recover gracefully.
@@ -487,6 +514,10 @@ zkevm.l1-matic-contract-address: "{{.pol_token_address}}"
 
 # The L1 block number from which to start syncing historical data.
 # Usually set to the block where the agglayer contracts were deployed.
+# NOTE: 0 is forbidden. We use 1 here (instead of 0) because cdk-erigon's flag parser treats a raw
+# zero as "flag not set" and the sequencer will panic on startup with
+# "Flag not set: zkevm.l1-first-block". Block 1 is well before any agglayer
+# deployment, so no CreateNewRollup / AddNewRollupType events are missed.
 # Default: 0
 zkevm.l1-first-block: {{.zkevm_rollup_manager_block_number}}
 
@@ -956,6 +987,13 @@ debug.limit: 0
 
 # Start incrementing by debug.step after this block.
 # debug.step-after:
+
+# Disable state root check after each block.
+# The SMT root computed by erigon differs from the state root stored in the
+# block header (UnwindZkSMT "wrong trie root" error).  This is a known
+# incompatibility with the current cdk-erigon build.
+# Default: false
+debug.disable-state-root-check: true
 
 
 # --------------------------------------------------------------------------------------------------

@@ -170,12 +170,18 @@ def get_keystores_artifacts(plan, args):
         service_name="contracts" + args["deployment_suffix"],
         src="/opt/zkevm/claimsponsor.keystore",
     )
+    agglayer_keystore_artifact = plan.store_service_files(
+        name="agglayer-keystore-cdk",
+        service_name="contracts" + args["deployment_suffix"],
+        src="/opt/zkevm/agglayer.keystore",
+    )
     return struct(
         sequencer=sequencer_keystore_artifact,
         aggregator=aggregator_keystore_artifact,
         proofsigner=proofsigner_keystore_artifact,
         dac=dac_keystore_artifact,
         claim_sponsor=claim_sponsor_keystore_artifact,
+        agglayer=agglayer_keystore_artifact,
     )
 
 
