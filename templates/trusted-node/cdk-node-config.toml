@@ -92,7 +92,6 @@ Outputs = ["stderr"]
 SyncUpToBlock = "latest"
 BlockFinality = "latest"
 SyncChunkSize = 10
-SyncInterval = "2s"
 
 [SequenceSender]
 # The sequence-sender must query the SEQUENCER for batch data.  The RPC node
