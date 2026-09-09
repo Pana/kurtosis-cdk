@@ -91,7 +91,6 @@ Outputs = ["stderr"]
 [Aggregator.Synchronizer.Synchronizer]
 SyncUpToBlock = "latest"
 BlockFinality = "latest"
-SyncChunkSize = 10
 
 [SequenceSender]
 # The sequence-sender must query the SEQUENCER for batch data.  The RPC node
